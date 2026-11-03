@@ -8,7 +8,7 @@ import (
 )
 
 // DefaultBaseURL is the root of the public Groupie Trackers API.
-const DefaultBaseURL = "https://groupietrackers.herokuapp.com/api"
+const DefaultBaseURL = "https://groupietrackers.01edu.ai/api"
 
 // Client fetches artist and concert data from the API.
 // Create it with NewClient; the zero value is not usable.
