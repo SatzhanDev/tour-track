@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Name}} · tour-track</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <a href="/">← All artists</a>
+
+  <h1>{{.Name}}</h1>
+  <span class="badge badge-{{lower .Label}}">{{.Label}}</span>
+  <img src="{{.Image}}" alt="{{.Name}}">
+
+  <h2>Activity score: {{.Score}}</h2>
+  <ul>
+    <li>Countries toured: {{.TourSpread}}</li>
+    <li>Concerts: {{.ConcertCount}}</li>
+    <li>Career years: {{.CareerYears}}</li>
+  </ul>
+
+  <h2>Info</h2>
+  <ul>
+    <li>Active since: {{.CreationDate}}</li>
+    <li>First album: {{.FirstAlbum}}</li>
+  </ul>
+
+  <h2>Members</h2>
+  <ul>
+    {{range .Members}}<li>{{.}}</li>{{end}}
+  </ul>
+
+  <h2>Concerts</h2>
+  {{if .Concerts}}
+  <table>
+    <thead><tr><th>City</th><th>Country</th><th>Dates</th></tr></thead>
+    <tbody>
+      {{range .Concerts}}
+      <tr>
+        <td>{{.City}}</td>
+        <td>{{.Country}}</td>
+        <td>{{range $i, $d := .Dates}}{{if $i}}, {{end}}{{date $d}}{{end}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p>No concerts listed.</p>
+  {{end}}
+</body>
+</html>

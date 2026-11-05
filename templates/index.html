@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>tour-track</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h1>tour-track</h1>
+  <ul class="cards">
+    {{range .}}
+    <li class="card">
+      <a href="/artist/{{.ID}}">
+        <img src="{{.Image}}" alt="{{.Name}}">
+        <h2>{{.Name}}</h2>
+      </a>
+      <span class="badge badge-{{lower .Label}}">{{.Label}}</span>
+    </li>
+    {{end}}
+  </ul>
+</body>
+</html>
