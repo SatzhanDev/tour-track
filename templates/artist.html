@@ -1,52 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{.Name}} · tour-track</title>
-  <link rel="stylesheet" href="/static/style.css">
+{{template "head" .Name}}
 </head>
 <body>
-  <a href="/">← All artists</a>
+{{template "header"}}
+  <main>
+    <a class="back" href="/">← All artists</a>
 
-  <h1>{{.Name}}</h1>
-  <span class="badge badge-{{lower .Label}}">{{.Label}}</span>
-  <img src="{{.Image}}" alt="{{.Name}}">
+    <section class="hero">
+      <img src="{{.Image}}" alt="{{.Name}}" width="300" height="300">
+      <div>
+        <h1>{{.Name}}</h1>
+        <span class="badge badge-{{lower .Label}}">{{.Label}}</span>
+        <dl class="facts">
+          <dt>Active since</dt>
+          <dd>{{.CreationDate}}</dd>
+          <dt>First album</dt>
+          <dd>{{.FirstAlbum}}</dd>
+          <dt>Members</dt>
+          <dd>{{range $i, $m := .Members}}{{if $i}}, {{end}}{{$m}}{{end}}</dd>
+        </dl>
+      </div>
+    </section>
 
-  <h2>Activity score: {{.Score}}</h2>
-  <ul>
-    <li>Countries toured: {{.TourSpread}}</li>
-    <li>Concerts: {{.ConcertCount}}</li>
-    <li>Career years: {{.CareerYears}}</li>
-  </ul>
+    <section class="panel">
+      <h2>Activity score: {{.Score}}</h2>
+      <table class="breakdown">
+        <thead><tr><th>Feature</th><th>Value</th><th>Points</th></tr></thead>
+        <tbody>
+          <tr><td>Countries toured <small>× 2</small></td><td>{{.TourSpread}}</td><td>{{.Points.Countries}}</td></tr>
+          <tr><td>Concerts <small>× 3</small></td><td>{{.ConcertCount}}</td><td>{{.Points.Concerts}}</td></tr>
+          <tr><td>Career years <small>÷ 5, max 10</small></td><td>{{.CareerYears}}</td><td>{{.Points.Career}}</td></tr>
+        </tbody>
+        <tfoot><tr><th colspan="2">Total</th><th>{{.Score}}</th></tr></tfoot>
+      </table>
+      <p class="scale">Emerging 0–10 · Active 11–25 · Established 26–40 · Legendary 41+</p>
+    </section>
 
-  <h2>Info</h2>
-  <ul>
-    <li>Active since: {{.CreationDate}}</li>
-    <li>First album: {{.FirstAlbum}}</li>
-  </ul>
-
-  <h2>Members</h2>
-  <ul>
-    {{range .Members}}<li>{{.}}</li>{{end}}
-  </ul>
-
-  <h2>Concerts</h2>
-  {{if .Concerts}}
-  <table>
-    <thead><tr><th>City</th><th>Country</th><th>Dates</th></tr></thead>
-    <tbody>
-      {{range .Concerts}}
-      <tr>
-        <td>{{.City}}</td>
-        <td>{{.Country}}</td>
-        <td>{{range $i, $d := .Dates}}{{if $i}}, {{end}}{{date $d}}{{end}}</td>
-      </tr>
+    <section class="panel">
+      <h2>Concerts</h2>
+      {{if .Concerts}}
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>City</th><th>Country</th><th>Dates</th></tr></thead>
+          <tbody>
+            {{range .Concerts}}
+            <tr>
+              <td>{{.City}}</td>
+              <td>{{.Country}}</td>
+              <td>{{range $i, $d := .Dates}}{{if $i}}, {{end}}{{date $d}}{{end}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+      {{else}}
+      <p>No concerts listed.</p>
       {{end}}
-    </tbody>
-  </table>
-  {{else}}
-  <p>No concerts listed.</p>
-  {{end}}
+    </section>
+  </main>
 </body>
 </html>

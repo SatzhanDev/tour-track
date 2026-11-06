@@ -127,6 +127,9 @@ func TestStoreAllAndByID(t *testing.T) {
 		t.Errorf("got career %d, score %d, label %q; want 56, 32, %q",
 			v.CareerYears, v.Score, v.Label, activity.Established)
 	}
+	if want := (activity.Breakdown{Countries: 4, Concerts: 18, Career: 10}); v.Points != want {
+		t.Errorf("Points = %+v, want %+v", v.Points, want)
+	}
 
 	// The label depends on the year passed at request time.
 	// 1980: career 10 -> 2 points -> score 24 -> Active.

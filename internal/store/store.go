@@ -23,8 +23,8 @@ type Concert struct {
 // ArtistView is an artist enriched with concerts and activity data.
 //
 // Concerts, TourSpread and ConcertCount are filled by Build. CareerYears,
-// Score and Label depend on the current year, so they are filled at request
-// time by Store.All and Store.ByID.
+// Points, Score and Label depend on the current year, so they are filled at
+// request time by Store.All and Store.ByID.
 type ArtistView struct {
 	api.Artist
 
@@ -33,6 +33,7 @@ type ArtistView struct {
 	ConcertCount int // number of concert dates
 
 	CareerYears int
+	Points      activity.Breakdown // how the score was computed
 	Score       int
 	Label       string
 }
@@ -111,8 +112,9 @@ func compareConcerts(a, b Concert) int {
 // the given year.
 func (v ArtistView) withActivity(year int) ArtistView {
 	v.CareerYears = activity.CareerYears(v.CreationDate, year)
-	v.Score = activity.Score(v.TourSpread, v.ConcertCount, v.CareerYears)
-	v.Label = activity.Classify(v.TourSpread, v.ConcertCount, v.CareerYears)
+	v.Points = activity.Explain(v.TourSpread, v.ConcertCount, v.CareerYears)
+	v.Score = v.Points.Total()
+	v.Label = activity.LabelForScore(v.Score)
 	return v
 }
 

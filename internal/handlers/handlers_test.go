@@ -66,6 +66,8 @@ func TestRoutes(t *testing.T) {
 		{"artist page", http.MethodGet, "/artist/1", 200, "Osaka"},
 		// 2 countries*2 + 3 concerts*3 + min(10, 56/5) = 23 -> Active
 		{"artist score", http.MethodGet, "/artist/1", 200, "Activity score: 23"},
+		{"artist breakdown", http.MethodGet, "/artist/1", 200, "class=\"breakdown\""},
+		{"shared header", http.MethodGet, "/artist/1", 200, "class=\"site-header\""},
 		{"static file", http.MethodGet, "/static/style.css", 200, ".badge"},
 		{"head allowed", http.MethodHead, "/", 200, ""},
 		{"id not a number", http.MethodGet, "/artist/abc", 400, "positive number"},

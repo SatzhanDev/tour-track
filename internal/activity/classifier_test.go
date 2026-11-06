@@ -99,3 +99,28 @@ func TestClassify(t *testing.T) {
 		})
 	}
 }
+func TestExplain(t *testing.T) {
+	tests := []struct {
+		name                             string
+		tourSpread, concertCount, career int
+		want                             Breakdown
+	}{
+		{"all zero", 0, 0, 0, Breakdown{}},
+		{"queen real data", 3, 8, 56, Breakdown{Countries: 6, Concerts: 24, Career: 10}},
+		{"career below cap", 1, 1, 23, Breakdown{Countries: 2, Concerts: 3, Career: 4}},
+		{"negative inputs treated as zero", -1, -1, -1, Breakdown{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Explain(tt.tourSpread, tt.concertCount, tt.career)
+			if got != tt.want {
+				t.Errorf("Explain(%d, %d, %d) = %+v, want %+v",
+					tt.tourSpread, tt.concertCount, tt.career, got, tt.want)
+			}
+			if got.Total() != Score(tt.tourSpread, tt.concertCount, tt.career) {
+				t.Errorf("Total() = %d, Score = %d, want equal",
+					got.Total(), Score(tt.tourSpread, tt.concertCount, tt.career))
+			}
+		})
+	}
+}

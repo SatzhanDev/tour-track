@@ -42,20 +42,41 @@ func CareerYears(creationYear, currentYear int) int {
 	return max(currentYear-creationYear, 0)
 }
 
-// Score computes the activity score:
+// Breakdown shows how many points each feature adds to the score, so the
+// result can be explained to the user.
+type Breakdown struct {
+	Countries int // tourSpread*2
+	Concerts  int // concertCount*3
+	Career    int // min(10, careerYears/5)
+}
+
+// Total returns the activity score: the sum of all points.
+func (b Breakdown) Total() int {
+	return b.Countries + b.Concerts + b.Career
+}
+
+// Explain computes the points of each part of the formula:
 //
 //	score = tourSpread*2 + concertCount*3 + min(10, careerYears/5)
 //
 // careerYears/5 is integer division on purpose: one point per full
 // five years, so 9 years give 1 point, not 1.8.
-// Negative inputs are treated as 0 so the score is never negative.
-func Score(tourSpread, concertCount, careerYears int) int {
+// Negative inputs are treated as 0 so no part is ever negative.
+func Explain(tourSpread, concertCount, careerYears int) Breakdown {
 	tourSpread = max(tourSpread, 0)
 	concertCount = max(concertCount, 0)
 	careerYears = max(careerYears, 0)
 
-	careerPoints := min(maxCareerPoints, careerYears/yearsPerPoint)
-	return tourSpread*countryWeight + concertCount*concertWeight + careerPoints
+	return Breakdown{
+		Countries: tourSpread * countryWeight,
+		Concerts:  concertCount * concertWeight,
+		Career:    min(maxCareerPoints, careerYears/yearsPerPoint),
+	}
+}
+
+// Score computes the activity score. See Explain for the formula.
+func Score(tourSpread, concertCount, careerYears int) int {
+	return Explain(tourSpread, concertCount, careerYears).Total()
 }
 
 // LabelForScore maps a score to its activity label using the thresholds

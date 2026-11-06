@@ -1,0 +1,14 @@
+{{/* Shared pieces used by every page through {{template "name" .}}. */}}
+
+{{define "head"}}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.}} · tour-track</title>
+  <link rel="stylesheet" href="/static/style.css">
+{{end}}
+
+{{define "header"}}
+  <header class="site-header">
+    <a class="logo" href="/">tour-track</a>
+  </header>
+{{end}}

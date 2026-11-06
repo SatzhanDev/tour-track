@@ -1,23 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>tour-track</title>
-  <link rel="stylesheet" href="/static/style.css">
+{{template "head" "Artists"}}
 </head>
 <body>
-  <h1>tour-track</h1>
-  <ul class="cards">
-    {{range .}}
-    <li class="card">
-      <a href="/artist/{{.ID}}">
-        <img src="{{.Image}}" alt="{{.Name}}">
-        <h2>{{.Name}}</h2>
-      </a>
-      <span class="badge badge-{{lower .Label}}">{{.Label}}</span>
-    </li>
-    {{end}}
-  </ul>
+{{template "header"}}
+  <main>
+    <section class="intro">
+      <h1>Artists on tour</h1>
+      <p>{{len .}} artists, rated by the Activity Classifier from Emerging to Legendary.</p>
+    </section>
+
+    <ul class="cards">
+      {{range .}}
+      <li class="card">
+        <a href="/artist/{{.ID}}">
+          <img src="{{.Image}}" alt="{{.Name}}" width="300" height="300" loading="lazy">
+          <div class="card-body">
+            <h2>{{.Name}}</h2>
+            <p class="meta">Since {{.CreationDate}} · {{.ConcertCount}} concerts</p>
+            <span class="badge badge-{{lower .Label}}">{{.Label}}</span>
+          </div>
+        </a>
+      </li>
+      {{end}}
+    </ul>
+  </main>
 </body>
 </html>
