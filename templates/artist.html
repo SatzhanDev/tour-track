@@ -13,6 +13,7 @@
       <div>
         <h1>{{.Name}}</h1>
         <span class="badge badge-{{lower .Label}}">{{.Label}}</span>
+        {{if .RisingStar}}<span class="badge badge-rising">Rising Star</span>{{end}}
         <dl class="facts">
           <dt>Active since</dt>
           <dd>{{.CreationDate}}</dd>
@@ -36,6 +37,13 @@
         <tfoot><tr><th colspan="2">Total</th><th>{{.Score}}</th></tr></tfoot>
       </table>
       <p class="scale">Emerging 0–10 · Active 11–25 · Established 26–40 · Legendary 41+</p>
+      <p class="trend">
+        Latest 2 years: {{printf "%.1f" .Trend.RecentRate}} concerts/year ·
+        career average: {{printf "%.2f" .Trend.CareerAverage}} concerts/year
+      </p>
+      {{if .RisingStar}}
+      <p class="rising-note">Rising Star: the recent rate is more than 1.5 times the career average.</p>
+      {{end}}
     </section>
 
     <section class="panel">

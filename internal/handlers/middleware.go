@@ -23,6 +23,22 @@ func (h *Handler) recoverPanic(next http.Handler) http.Handler {
 	})
 }
 
+// contentSecurityPolicy allows scripts, styles and fonts only from this
+// site, and images also from any HTTPS host (artist photos come from the
+// API server). Inline scripts are blocked, which stops most XSS attacks.
+const contentSecurityPolicy = "default-src 'self'; img-src 'self' https:"
+
+// secureHeaders adds headers that make the browser stricter with our pages.
+func secureHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("Content-Security-Policy", contentSecurityPolicy)
+		h.Set("X-Content-Type-Options", "nosniff") // trust our Content-Type
+		h.Set("Referrer-Policy", "same-origin")
+		next.ServeHTTP(w, r)
+	})
+}
+
 // statusRecorder remembers the status code written by a handler.
 type statusRecorder struct {
 	http.ResponseWriter

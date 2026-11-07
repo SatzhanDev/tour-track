@@ -15,6 +15,7 @@
   --active-bg: #dcfce7;      --active-fg: #166534;
   --established-bg: #fef3c7; --established-fg: #92400e;
   --legendary-bg: #f3e8ff;   --legendary-fg: #6b21a8;
+  --rising-bg: #ffe4e6;      --rising-fg: #9f1239;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -33,6 +34,7 @@
     --active-bg: #12422a;      --active-fg: #bbf7d0;
     --established-bg: #4a3108; --established-fg: #fde68a;
     --legendary-bg: #3b1d5c;   --legendary-fg: #e9d5ff;
+    --rising-bg: #5c1527;      --rising-fg: #fecdd3;
   }
 }
 
@@ -61,6 +63,40 @@ h1, h2 { line-height: 1.2; }
 .logo { font-weight: 800; font-size: 1.2rem; text-decoration: none; color: var(--text); }
 
 .intro p { color: var(--muted); margin-top: -8px; }
+
+/* ---------- Search ---------- */
+.search { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.search input[type="search"],
+.search select,
+.search button {
+  font: inherit;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+.search input[type="search"] { flex: 1 1 220px; }
+.search button { background: var(--accent); border-color: var(--accent); color: var(--on-accent); cursor: pointer; }
+.search .toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  color: var(--text);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.search .toggle input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+.status { color: var(--muted); font-size: 0.9rem; margin: 0 0 16px; }
+.empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
 
 /* ---------- Cards ---------- */
 .cards {
@@ -104,6 +140,7 @@ h1, h2 { line-height: 1.2; }
 .badge-active      { background: var(--active-bg);      color: var(--active-fg); }
 .badge-established { background: var(--established-bg); color: var(--established-fg); }
 .badge-legendary   { background: var(--legendary-bg);   color: var(--legendary-fg); }
+.badge-rising      { background: var(--rising-bg);      color: var(--rising-fg); }
 
 /* ---------- Artist page ---------- */
 .back { display: inline-block; margin-bottom: 16px; text-decoration: none; }
@@ -141,6 +178,8 @@ thead th { color: var(--muted); font-size: 0.85rem; font-weight: 600; }
 .breakdown tfoot th { border-bottom: 0; font-size: 1.05rem; }
 
 .scale { color: var(--muted); font-size: 0.85rem; margin-bottom: 0; }
+.trend { color: var(--muted); font-size: 0.85rem; margin: 8px 0 0; }
+.rising-note { margin: 12px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--rising-bg); color: var(--rising-fg); }
 
 /* ---------- Error page ---------- */
 .error { text-align: center; padding-top: 64px; }

@@ -40,13 +40,15 @@ func newTestHandler(t *testing.T, s *store.Store) *Handler {
 
 func loadedStore() *store.Store {
 	var s store.Store
-	s.Set(store.Build(
-		[]api.Artist{{ID: 1, Name: "Queen", CreationDate: 1970, Members: []string{"Freddie Mercury"}}},
-		[]api.Relation{{ID: 1, DatesLocations: map[string][]string{
+	s.Set(store.Build(store.Data{
+		Artists:   []api.Artist{{ID: 1, Name: "Queen", CreationDate: 1970, Members: []string{"Freddie Mercury"}}},
+		Locations: []api.Location{{ID: 1, Locations: []string{"london-uk", "osaka-japan"}}},
+		Dates:     []api.Dates{{ID: 1, Dates: []string{"*01-01-2020", "*02-01-2020", "03-01-2020"}}},
+		Relations: []api.Relation{{ID: 1, DatesLocations: map[string][]string{
 			"london-uk":   {"01-01-2020"},
 			"osaka-japan": {"02-01-2020", "03-01-2020"},
 		}}},
-	))
+	}))
 	return &s
 }
 
@@ -63,6 +65,18 @@ func TestRoutes(t *testing.T) {
 	}{
 		{"home", http.MethodGet, "/", 200, "Queen"},
 		{"home shows badge", http.MethodGet, "/", 200, "badge-active"},
+		{"home count", http.MethodGet, "/", 200, "Showing 1 of 1 artists"},
+		{"home search", http.MethodGet, "/?q=queen", 200, "Showing 1 of 1 artists"},
+		{"home search no match", http.MethodGet, "/?q=nobody", 200, "Showing 0 of 1 artists"},
+		{"home keeps query", http.MethodGet, "/?q=nobody", 200, `value="nobody"`},
+		{"home keeps label", http.MethodGet, "/?label=active", 200, `value="Active" selected`},
+		{"home unknown label", http.MethodGet, "/?label=famous", 400, "Unknown activity label"},
+		{"home label counts", http.MethodGet, "/", 200, "Active (1)"},
+		{"home empty label count", http.MethodGet, "/", 200, "Emerging (0)"},
+		{"home rising checkbox", http.MethodGet, "/", 200, `name="rising"`},
+		{"home rising filter", http.MethodGet, "/?rising=1", 200, "Showing 0 of 1 artists"},
+		{"home keeps rising", http.MethodGet, "/?rising=1", 200, `value="1" checked`},
+		{"home empty message", http.MethodGet, "/?q=nobody", 200, "No artists match these filters"},
 		{"artist page", http.MethodGet, "/artist/1", 200, "Osaka"},
 		// 2 countries*2 + 3 concerts*3 + min(10, 56/5) = 23 -> Active
 		{"artist score", http.MethodGet, "/artist/1", 200, "Activity score: 23"},
@@ -95,6 +109,40 @@ func TestRoutes(t *testing.T) {
 	}
 }
 
+func TestRisingStarBadge(t *testing.T) {
+	// The test clock is 01-01-2026, so the latest 2 years start 01-01-2024.
+	// Comeback: 2 recent concerts = 1/year against 2 / 36 years.
+	var s store.Store
+	s.Set(store.Build(store.Data{
+		Artists: []api.Artist{{ID: 1, Name: "Comeback", CreationDate: 1990}},
+		Dates:   []api.Dates{{ID: 1, Dates: []string{"*01-06-2024", "*01-06-2025"}}},
+	}))
+	h := newTestHandler(t, &s)
+
+	for _, path := range []string{"/", "/artist/1"} {
+		rec := httptest.NewRecorder()
+		h.Routes().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if !strings.Contains(rec.Body.String(), "badge-rising") {
+			t.Errorf("GET %s: no Rising Star badge", path)
+		}
+	}
+
+	// The artist page shows both rates the rule compares.
+	rec := httptest.NewRecorder()
+	h.Routes().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/artist/1", nil))
+	if !strings.Contains(rec.Body.String(), "1.0 concerts/year") {
+		t.Error("artist page does not show the recent rate")
+	}
+
+	// Queen in loadedStore last played in 2020, so she is not rising.
+	h = newTestHandler(t, loadedStore())
+	rec = httptest.NewRecorder()
+	h.Routes().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if strings.Contains(rec.Body.String(), "badge-rising") {
+		t.Error("Rising Star badge shown for an artist that is not rising")
+	}
+}
+
 func TestMethodNotAllowedSetsAllowHeader(t *testing.T) {
 	h := newTestHandler(t, loadedStore())
 	rec := httptest.NewRecorder()
@@ -119,7 +167,7 @@ func TestDataNotLoaded(t *testing.T) {
 }
 
 func TestTemplateErrorGives500(t *testing.T) {
-	// index.html fails at execution time: a slice has no field Missing.
+	// index.html fails at execution time: indexPage has no field Missing.
 	broken := fstest.MapFS{
 		"index.html": {Data: []byte(`partial {{.Missing}}`)},
 		"error.html": {Data: []byte(`{{.Status}} {{.Message}}`)},
@@ -180,5 +228,25 @@ func TestTemplateFuncs(t *testing.T) {
 	date := templateFuncs["date"].(func(time.Time) string)
 	if got := date(time.Date(2019, time.August, 23, 0, 0, 0, 0, time.UTC)); got != "23 Aug 2019" {
 		t.Errorf("date = %q, want %q", got, "23 Aug 2019")
+	}
+}
+
+func TestSecureHeaders(t *testing.T) {
+	h := newTestHandler(t, loadedStore())
+	want := map[string]string{
+		"Content-Security-Policy": contentSecurityPolicy,
+		"X-Content-Type-Options":  "nosniff",
+		"Referrer-Policy":         "same-origin",
+	}
+
+	// Error pages must get the headers too.
+	for _, path := range []string{"/", "/nope", "/api/artists"} {
+		rec := httptest.NewRecorder()
+		h.Routes().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		for name, value := range want {
+			if got := rec.Header().Get(name); got != value {
+				t.Errorf("GET %s: %s = %q, want %q", path, name, got, value)
+			}
+		}
 	}
 }

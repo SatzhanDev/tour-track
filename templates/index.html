@@ -8,11 +8,29 @@
   <main>
     <section class="intro">
       <h1>Artists on tour</h1>
-      <p>{{len .}} artists, rated by the Activity Classifier from Emerging to Legendary.</p>
+      <p>Rated by the Activity Classifier from Emerging to Legendary.</p>
     </section>
 
-    <ul class="cards">
-      {{range .}}
+    <form id="search" class="search" action="/" method="get" role="search">
+      <input type="search" name="q" value="{{.Filter.Query}}" placeholder="Artist, member or city" aria-label="Search artists">
+      <select name="label" aria-label="Filter by label">
+        <option value="">All labels</option>
+        {{range .Labels}}
+        <option value="{{.Name}}"{{if eq .Name $.Filter.Label}} selected{{end}}>{{.Name}} ({{.Count}})</option>
+        {{end}}
+      </select>
+      <label class="toggle">
+        <input type="checkbox" name="rising" value="1"{{if .Filter.RisingOnly}} checked{{end}}>
+        Rising Stars
+      </label>
+      <button type="submit">Search</button>
+    </form>
+
+    <p id="status" class="status" aria-live="polite">Showing {{len .Artists}} of {{.Total}} artists</p>
+    <p id="empty" class="empty"{{if .Artists}} hidden{{end}}>No artists match these filters. Try another label or clear the search.</p>
+
+    <ul id="cards" class="cards">
+      {{range .Artists}}
       <li class="card">
         <a href="/artist/{{.ID}}">
           <img src="{{.Image}}" alt="{{.Name}}" width="300" height="300" loading="lazy">
@@ -20,11 +38,13 @@
             <h2>{{.Name}}</h2>
             <p class="meta">Since {{.CreationDate}} · {{.ConcertCount}} concerts</p>
             <span class="badge badge-{{lower .Label}}">{{.Label}}</span>
+            {{if .RisingStar}}<span class="badge badge-rising">Rising Star</span>{{end}}
           </div>
         </a>
       </li>
       {{end}}
     </ul>
   </main>
+  <script src="/static/app.js" defer></script>
 </body>
 </html>

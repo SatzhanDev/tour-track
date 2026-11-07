@@ -3,6 +3,8 @@ package api
 import (
 	"net/http"
 	"net/http/httptest"
+	"slices"
+	"strings"
 	"testing"
 )
 
@@ -21,6 +23,14 @@ const relationJSON = `{"index": [
 		"london-uk": ["01-01-2020", "02-01-2020"],
 		"osaka-japan": ["28-01-2020"]
 	}}
+]}`
+
+const locationsJSON = `{"index": [
+	{"id": 1, "locations": ["london-uk", "osaka-japan"], "dates": "https://example.com/dates/1"}
+]}`
+
+const datesJSON = `{"index": [
+	{"id": 1, "dates": ["*01-01-2020", "02-01-2020", "*28-01-2020"]}
 ]}`
 
 // newFakeAPI starts a local server that answers every request with the given
@@ -99,6 +109,36 @@ func TestFetchRelations(t *testing.T) {
 	}
 }
 
+func TestFetchLocations(t *testing.T) {
+	srv := newFakeAPI(t, http.StatusOK, locationsJSON)
+
+	locations, err := NewClient(srv.URL).FetchLocations()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(locations) != 1 || locations[0].ID != 1 {
+		t.Fatalf("got %+v, want one entry with ID 1", locations)
+	}
+	if got := locations[0].Locations; !slices.Equal(got, []string{"london-uk", "osaka-japan"}) {
+		t.Errorf("Locations = %v", got)
+	}
+}
+
+func TestFetchDates(t *testing.T) {
+	srv := newFakeAPI(t, http.StatusOK, datesJSON)
+
+	dates, err := NewClient(srv.URL).FetchDates()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(dates) != 1 || dates[0].ID != 1 {
+		t.Fatalf("got %+v, want one entry with ID 1", dates)
+	}
+	if got := dates[0].Dates; !slices.Equal(got, []string{"*01-01-2020", "02-01-2020", "*28-01-2020"}) {
+		t.Errorf("Dates = %v", got)
+	}
+}
+
 func TestFetchServerError(t *testing.T) {
 	srv := newFakeAPI(t, http.StatusInternalServerError, `{"error": "boom"}`)
 	c := NewClient(srv.URL)
@@ -108,6 +148,12 @@ func TestFetchServerError(t *testing.T) {
 	}
 	if relations, err := c.FetchRelations(); err == nil {
 		t.Errorf("FetchRelations: expected error, got %d relations", len(relations))
+	}
+	if _, err := c.FetchLocations(); err == nil {
+		t.Error("FetchLocations: expected error")
+	}
+	if _, err := c.FetchDates(); err == nil {
+		t.Error("FetchDates: expected error")
 	}
 }
 
@@ -132,5 +178,15 @@ func TestFetchUnreachable(t *testing.T) {
 
 	if _, err := NewClient(url).FetchArtists(); err == nil {
 		t.Error("expected error when API is unreachable")
+	}
+}
+
+func TestFetchBodyTooLarge(t *testing.T) {
+	// Valid JSON, but only after more than maxBodySize bytes of spaces, so
+	// the reader stops before the decoder sees it.
+	srv := newFakeAPI(t, http.StatusOK, strings.Repeat(" ", maxBodySize)+"[]")
+
+	if _, err := NewClient(srv.URL).FetchArtists(); err == nil {
+		t.Error("expected an error for a body larger than the limit")
 	}
 }

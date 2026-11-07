@@ -1,6 +1,9 @@
 package activity
 
-import "testing"
+import (
+	"slices"
+	"testing"
+)
 
 func TestCareerYears(t *testing.T) {
 	tests := []struct {
@@ -40,6 +43,8 @@ func TestScore(t *testing.T) {
 		{"career cap reached at 50", 0, 0, 50, 10},
 		{"career cap above 50", 0, 0, 68, 10},
 		{"queen real data", 3, 8, 56, 40},
+		// The example auditors check by hand: 10 + 24 + 6 = 40.
+		{"audit example", 5, 8, 30, 40},
 		{"negative inputs treated as zero", -5, -2, -10, 0},
 	}
 	for _, tt := range tests {
@@ -86,6 +91,7 @@ func TestClassify(t *testing.T) {
 		{"active upper bound (25)", 2, 7, 0, Active},
 		{"established lower bound (26)", 1, 8, 0, Established},
 		{"queen: established upper bound (40)", 3, 8, 56, Established},
+		{"audit example (40)", 5, 8, 30, Established},
 		{"legendary lower bound (41)", 1, 13, 0, Legendary},
 		{"long career alone stays emerging", 0, 0, 68, Emerging},
 	}
@@ -99,6 +105,7 @@ func TestClassify(t *testing.T) {
 		})
 	}
 }
+
 func TestExplain(t *testing.T) {
 	tests := []struct {
 		name                             string
@@ -122,5 +129,19 @@ func TestExplain(t *testing.T) {
 					got.Total(), Score(tt.tourSpread, tt.concertCount, tt.career))
 			}
 		})
+	}
+}
+
+func TestLabels(t *testing.T) {
+	want := []string{Emerging, Active, Established, Legendary}
+	got := Labels()
+	if !slices.Equal(got, want) {
+		t.Fatalf("Labels() = %v, want %v", got, want)
+	}
+
+	// Changing the returned slice must not affect later calls.
+	got[0] = "changed"
+	if Labels()[0] != Emerging {
+		t.Error("Labels() returned shared data")
 	}
 }

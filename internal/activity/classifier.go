@@ -13,6 +13,12 @@ const (
 	Legendary   = "Legendary"   // score 41 and above
 )
 
+// Labels returns all activity labels, from least to most active.
+// It returns a new slice on every call, so callers may modify it.
+func Labels() []string {
+	return []string{Emerging, Active, Established, Legendary}
+}
+
 // Upper bounds (inclusive) of each label's score range.
 const (
 	maxEmerging    = 10

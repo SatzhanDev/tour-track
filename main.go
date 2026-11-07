@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"flag"
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"tour-track/internal/api"
@@ -19,13 +23,20 @@ import (
 //go:embed templates static
 var assets embed.FS
 
-// retryInterval is how often loading is retried while the API is down.
-const retryInterval = 30 * time.Second
+const (
+	retryInterval   = 30 * time.Second // while the API is down
+	refreshInterval = time.Hour        // to pick up changes in the API
+	shutdownTimeout = 5 * time.Second  // for requests still in progress
+)
 
 func main() {
 	addr := flag.String("addr", ":8084", "HTTP listen address")
 	apiURL := flag.String("api", api.DefaultBaseURL, "base URL of the artists API")
 	flag.Parse()
+
+	// ctx is cancelled on Ctrl+C or when the system asks the server to stop.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	templates, err := fs.Sub(assets, "templates")
 	if err != nil {
@@ -41,10 +52,10 @@ func main() {
 	if err := s.Load(client); err != nil {
 		// Keep serving: pages answer 503 until a retry succeeds.
 		log.Printf("initial load failed: %v; retrying every %s", err, retryInterval)
-		go retryLoad(&s, client)
 	} else {
 		log.Printf("loaded %d artists", s.Len())
 	}
+	go s.KeepFresh(ctx, client, retryInterval, refreshInterval)
 
 	h, err := handlers.New(&s, templates, static)
 	if err != nil {
@@ -55,22 +66,30 @@ func main() {
 		Addr:              *addr,
 		Handler:           h.Routes(),
 		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       time.Minute,
 	}
-	log.Printf("listening on %s", *addr)
-	log.Fatal(srv.ListenAndServe())
-}
 
-// retryLoad calls Load every retryInterval until it succeeds.
-func retryLoad(s *store.Store, f store.Fetcher) {
-	ticker := time.NewTicker(retryInterval)
-	defer ticker.Stop()
+	// ListenAndServe blocks, so it runs in its own goroutine and reports
+	// its error through a channel.
+	serveErr := make(chan error, 1)
+	go func() {
+		log.Printf("listening on %s", *addr)
+		serveErr <- srv.ListenAndServe()
+	}()
 
-	for range ticker.C {
-		if err := s.Load(f); err != nil {
-			log.Printf("retry failed: %v", err)
-			continue
-		}
-		log.Printf("loaded %d artists", s.Len())
-		return
+	select {
+	case err := <-serveErr:
+		log.Fatal(err) // for example, the port is already in use
+	case <-ctx.Done():
+	}
+
+	// Stop accepting new requests and let the running ones finish.
+	log.Print("shutting down")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("shutdown: %v", err)
 	}
 }

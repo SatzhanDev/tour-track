@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"tour-track/internal/activity"
 	"tour-track/internal/store"
 )
 
@@ -28,6 +29,34 @@ type errorPage struct {
 	Status  int
 	Title   string
 	Message string
+}
+
+// indexPage is the data passed to index.html.
+type indexPage struct {
+	Artists []store.ArtistView // artists that match the filters
+	Total   int                // number of artists before filtering
+	Filter  store.Filter       // to keep the form filled in
+	Labels  []labelOption      // every label, for the filter menu
+}
+
+// labelOption is one entry of the label filter menu.
+type labelOption struct {
+	Name  string
+	Count int // artists with this label, before filtering
+}
+
+// labelOptions counts the artists per label, so the menu shows what each
+// filter can find (for example "Emerging (0)").
+func labelOptions(all []store.ArtistView) []labelOption {
+	counts := make(map[string]int)
+	for _, a := range all {
+		counts[a.Label]++
+	}
+	var labels []labelOption
+	for _, name := range activity.Labels() {
+		labels = append(labels, labelOption{Name: name, Count: counts[name]})
+	}
+	return labels
 }
 
 // templateFuncs are helpers available inside templates.
@@ -55,12 +84,16 @@ func (h *Handler) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/{$}", h.index)
 	mux.HandleFunc("/artist/{id}", h.artist)
+	mux.HandleFunc("/api/artists", h.apiArtists)
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServerFS(h.static)))
 	mux.HandleFunc("/", h.notFound)
-	return h.recoverPanic(logRequests(mux))
+	return h.recoverPanic(logRequests(secureHeaders(mux)))
 }
 
-// index lists every artist.
+// index lists the artists that match the q, label and rising query
+// parameters.
+// The same filters are used by the live search in app.js, so the page also
+// works without JavaScript.
 func (h *Handler) index(w http.ResponseWriter, r *http.Request) {
 	if !h.allowGet(w, r) {
 		return
@@ -69,7 +102,19 @@ func (h *Handler) index(w http.ResponseWriter, r *http.Request) {
 		h.unavailable(w)
 		return
 	}
-	h.render(w, http.StatusOK, "index.html", h.store.All(h.now().Year()))
+	filter, ok := parseFilter(r)
+	if !ok {
+		h.renderError(w, http.StatusBadRequest, "Unknown activity label.")
+		return
+	}
+
+	all := h.store.All(h.now())
+	h.render(w, http.StatusOK, "index.html", indexPage{
+		Artists: store.Search(all, filter),
+		Total:   len(all),
+		Filter:  filter,
+		Labels:  labelOptions(all),
+	})
 }
 
 // artist shows one artist by ID.
@@ -83,7 +128,7 @@ func (h *Handler) artist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a, ok := h.store.ByID(id, h.now().Year())
+	a, ok := h.store.ByID(id, h.now())
 	if !ok {
 		if h.store.Len() == 0 {
 			h.unavailable(w)
@@ -106,10 +151,37 @@ func (h *Handler) unavailable(w http.ResponseWriter) {
 		"Artist data is not available yet. Please try again in a moment.")
 }
 
+// parseFilter reads the q, label and rising query parameters. The label is
+// returned in its canonical spelling ("active" becomes "Active"); ok is
+// false when it is not a known label. An empty label means "any label".
+// rising=1 keeps only Rising Stars; any other value is ignored.
+func parseFilter(r *http.Request) (f store.Filter, ok bool) {
+	params := r.URL.Query()
+	f.Query = strings.TrimSpace(params.Get("q"))
+	f.RisingOnly = params.Get("rising") == "1"
+
+	raw := strings.TrimSpace(params.Get("label"))
+	if raw == "" {
+		return f, true
+	}
+	for _, l := range activity.Labels() {
+		if strings.EqualFold(l, raw) {
+			f.Label = l
+			return f, true
+		}
+	}
+	return f, false
+}
+
+// isReadMethod reports whether the request only reads data (GET or HEAD).
+func isReadMethod(r *http.Request) bool {
+	return r.Method == http.MethodGet || r.Method == http.MethodHead
+}
+
 // allowGet reports whether the request method is GET or HEAD. Otherwise it
 // writes a 405 response and returns false.
 func (h *Handler) allowGet(w http.ResponseWriter, r *http.Request) bool {
-	if r.Method == http.MethodGet || r.Method == http.MethodHead {
+	if isReadMethod(r) {
 		return true
 	}
 	w.Header().Set("Allow", "GET, HEAD")
@@ -126,7 +198,7 @@ func (h *Handler) render(w http.ResponseWriter, status int, name string, data an
 		h.renderError(w, http.StatusInternalServerError, "Something went wrong on our side.")
 		return
 	}
-	writeHTML(w, status, &buf)
+	send(w, status, "text/html; charset=utf-8", &buf)
 }
 
 // renderError shows error.html. If that template fails too, it falls back
@@ -140,12 +212,12 @@ func (h *Handler) renderError(w http.ResponseWriter, status int, message string)
 		http.Error(w, http.StatusText(status), status)
 		return
 	}
-	writeHTML(w, status, &buf)
+	send(w, status, "text/html; charset=utf-8", &buf)
 }
 
-// writeHTML sends an HTML body with the given status.
-func writeHTML(w http.ResponseWriter, status int, body *bytes.Buffer) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+// send writes a ready response body with the given status and type.
+func send(w http.ResponseWriter, status int, contentType string, body *bytes.Buffer) {
+	w.Header().Set("Content-Type", contentType)
 	w.WriteHeader(status)
 	if _, err := body.WriteTo(w); err != nil {
 		log.Printf("write response: %v", err)
